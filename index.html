@@ -277,6 +277,9 @@
     <div class="candidate-list" id="candidate-list"></div>
 
     <button class="btn-primary" id="btn-start" disabled onclick="startExam()">Comenzar evaluación →</button>
+
+    <button class="btn-ghost" style="margin-top:16px;font-size:12px" onclick="testSheetConnection()">Probar conexión con Google Sheet</button>
+    <div class="save-status" id="conn-status" style="margin-top:6px"></div>
   </div>
 </div>
 
@@ -443,6 +446,58 @@ export class VehicleTrackerComponent implements OnInit {
     ]
   }
 };
+
+// ======================= GOOGLE SHEET =======================
+const SHEET_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbznlHyrREM6doaAWY5oKQjYYQj-n6H0bYb8vrdoIF_s8I40GcutmRRZ7ot_jdqjIOvS/exec";
+
+async function sendToSheet(submission){
+  const exam = EXAMS[submission.candidate];
+  const rows = [];
+  exam.blocks.forEach(block => {
+    block.questions.forEach(q => {
+      const key = block.id + ':' + q.id;
+      rows.push({
+        candidato: submission.candidate,
+        fecha_envio: submission.submittedAt,
+        bloque: block.title,
+        pregunta: q.id,
+        puntos_max: q.pts,
+        respuesta: submission.answers[key] || '',
+        tiempo_usado_min: Math.round(submission.timeUsedSeconds/60)
+      });
+    });
+  });
+  try{
+    await fetch(SHEET_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ rows })
+    });
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+async function testSheetConnection(){
+  const statusEl = document.getElementById('conn-status');
+  statusEl.textContent = 'Probando conexión...';
+  try{
+    const res = await fetch(SHEET_SCRIPT_URL, { method: 'GET' });
+    const data = await res.json();
+    if(data && data.ok){
+      statusEl.textContent = '✓ Conectado — el script respondió correctamente.';
+      statusEl.style.color = '#3F7D5C';
+    } else {
+      statusEl.textContent = '⚠️ El script respondió pero con un formato inesperado.';
+      statusEl.style.color = '#B5533F';
+    }
+  }catch(e){
+    statusEl.textContent = '✗ No se pudo conectar: ' + e.message + ' — revisa que la URL termine en /exec y que el acceso esté en "Cualquier usuario".';
+    statusEl.style.color = '#B5533F';
+  }
+}
 
 // ======================= STATE =======================
 let currentCandidate = null;
@@ -651,18 +706,22 @@ async function finishExam(){
     totalQuestions
   };
 
+  let storageOk = true;
   try{
     await window.storage.set('refuerzo-final:' + currentCandidate, JSON.stringify(submission), true);
   }catch(e){
-    document.getElementById('done-detail').textContent = 'Hubo un problema guardando la evaluación. Toma captura de esta pantalla y avísale a Andrea.';
+    storageOk = false;
   }
+  const sheetOk = await sendToSheet(submission);
 
   document.getElementById('screen-exam').style.display = 'none';
   document.getElementById('screen-done').style.display = 'flex';
   const m = Math.floor(submission.timeUsedSeconds/60);
   const s = submission.timeUsedSeconds%60;
+  let statusLine = '';
+  if(!storageOk && !sheetOk) statusLine = '<br><br>⚠️ Hubo un problema guardando la evaluación. Toma captura de esta pantalla y avísale a Andrea.';
   document.getElementById('done-detail').innerHTML =
-    `<b>${currentCandidate}</b><br>${answeredCount} de ${totalQuestions} preguntas respondidas<br>Tiempo usado: ${m}:${s.toString().padStart(2,'0')}`;
+    `<b>${currentCandidate}</b><br>${answeredCount} de ${totalQuestions} preguntas respondidas<br>Tiempo usado: ${m}:${s.toString().padStart(2,'0')}${statusLine}`;
 }
 
 // ======================= INIT =======================
