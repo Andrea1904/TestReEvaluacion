@@ -482,19 +482,30 @@ async function sendToSheet(submission){
 
 async function testSheetConnection(){
   const statusEl = document.getElementById('conn-status');
-  statusEl.textContent = 'Probando conexión...';
+  statusEl.textContent = 'Enviando fila de prueba...';
   try{
-    const res = await fetch(SHEET_SCRIPT_URL, { method: 'GET' });
-    const data = await res.json();
-    if(data && data.ok){
-      statusEl.textContent = '✓ Conectado — el script respondió correctamente.';
-      statusEl.style.color = '#3F7D5C';
-    } else {
-      statusEl.textContent = '⚠️ El script respondió pero con un formato inesperado.';
-      statusEl.style.color = '#B5533F';
-    }
+    // no-cors: el navegador bloquea la lectura de la respuesta de Apps
+    // Script por política CORS aunque el despliegue esté bien configurado,
+    // así que no podemos leer el JSON de vuelta. Si esto no lanza un error
+    // de red, la solicitud salió — confirma en el Sheet mismo si llegó.
+    await fetch(SHEET_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ rows: [{
+        candidato: '— Prueba de conexión —',
+        fecha_envio: new Date().toISOString(),
+        bloque: 'Prueba manual desde el botón',
+        pregunta: '-',
+        puntos_max: '-',
+        respuesta: 'Si ves esta fila en el Sheet, la conexión funciona.',
+        tiempo_usado_min: 0
+      }] })
+    });
+    statusEl.textContent = '→ Fila de prueba enviada. Revisa la pestaña "Respuestas" del Sheet — busca "— Prueba de conexión —".';
+    statusEl.style.color = '#B9B6AC';
   }catch(e){
-    statusEl.textContent = '✗ No se pudo conectar: ' + e.message + ' — revisa que la URL termine en /exec y que el acceso esté en "Cualquier usuario".';
+    statusEl.textContent = '✗ No se pudo enviar la solicitud: ' + e.message + ' — revisa que la URL esté bien copiada.';
     statusEl.style.color = '#B5533F';
   }
 }
@@ -729,3 +740,4 @@ renderCandidateList();
 </script>
 </body>
 </html>
+
