@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evaluación de refuerzo · Satrack Ingeniería</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --asphalt:#1B1D1F;
+    --asphalt-2:#242628;
+    --line-yellow:#E3A93B;
+    --route-green:#3F7D5C;
+    --paper:#F3F0E8;
+    --paper-dim:#B9B6AC;
+    --ink:#EDEAE2;
+    --ink-dim:#8C8A83;
+    --red:#B5533F;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--asphalt);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:15px;
+    line-height:1.6;
+    min-height:100vh;
+  }
+  ::selection{background:var(--line-yellow);color:var(--asphalt)}
+
+  h1,h2,h3,.serif{font-family:'Newsreader',serif}
+
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  textarea{font-family:inherit}
+
+  /* ---------- WELCOME ---------- */
+  #screen-welcome{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .welcome-card{
+    max-width:460px;
+    width:100%;
+  }
+  .route-mark{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:32px;
+  }
+  .route-dash{
+    width:28px;height:3px;background:var(--line-yellow);
+  }
+  .route-mark span{
+    font-size:12px;
+    letter-spacing:.06em;
+    color:var(--paper-dim);
+  }
+  .welcome-card h1{
+    font-size:38px;
+    font-weight:500;
+    font-style:italic;
+    line-height:1.15;
+    color:var(--paper);
+    margin-bottom:10px;
+  }
+  .welcome-card p.lede{
+    color:var(--ink-dim);
+    font-size:15px;
+    max-width:38ch;
+    margin-bottom:28px;
+  }
+  .candidate-list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-bottom:28px;
+  }
+  .candidate-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 20px;
+    border:1px solid #35383A;
+    border-radius:var(--radius);
+    background:var(--asphalt-2);
+    transition:border-color .15s;
+    text-align:left;
+    width:100%;
+  }
+  .candidate-row:hover{border-color:var(--paper-dim)}
+  .candidate-row.selected{border-color:var(--line-yellow)}
+  .candidate-row .cname{font-family:'Newsreader',serif;font-size:19px;color:var(--paper)}
+  .candidate-row .cmeta{font-size:12px;color:var(--ink-dim);margin-top:2px}
+  .candidate-row .cscore{font-size:13px;color:var(--paper-dim)}
+
+  .meta-row{
+    display:flex;
+    gap:18px;
+    margin-bottom:28px;
+    font-size:12px;
+    color:var(--ink-dim);
+  }
+  .meta-row b{color:var(--paper-dim);font-weight:500}
+
+  .btn-primary{
+    background:var(--line-yellow);
+    color:var(--asphalt);
+    padding:14px 26px;
+    border-radius:var(--radius);
+    font-size:14px;
+    font-weight:600;
+    width:100%;
+    transition:opacity .15s;
+  }
+  .btn-primary:hover{opacity:.88}
+  .btn-primary:disabled{background:#4A4C4E;color:var(--ink-dim);cursor:not-allowed}
+
+  /* ---------- EXAM ---------- */
+  #screen-exam{display:none;min-height:100vh}
+  .exam-layout{
+    display:grid;
+    grid-template-columns:230px 1fr;
+    min-height:100vh;
+  }
+  .sidebar{
+    background:var(--asphalt-2);
+    border-right:1px solid #35383A;
+    padding:24px 18px;
+    position:sticky;
+    top:0;
+    height:100vh;
+    overflow-y:auto;
+  }
+  .sidebar-name{font-family:'Newsreader',serif;font-size:20px;font-style:italic;color:var(--paper);margin-bottom:2px}
+  .sidebar-role{font-size:11px;color:var(--ink-dim);margin-bottom:22px}
+  .timer{
+    font-size:26px;
+    font-family:'Newsreader',serif;
+    color:var(--line-yellow);
+    margin-bottom:22px;
+    font-variant-numeric:tabular-nums;
+  }
+  .timer.low{color:var(--red)}
+  .block-nav{display:flex;flex-direction:column;gap:2px}
+  .block-nav-item{
+    padding:9px 10px;
+    border-radius:var(--radius);
+    font-size:13px;
+    color:var(--ink-dim);
+    text-align:left;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:6px;
+  }
+  .block-nav-item:hover{background:#2C2F31}
+  .block-nav-item.active{background:#2C2F31;color:var(--paper)}
+  .block-nav-item .pts{font-size:10px;color:var(--ink-dim)}
+  .block-nav-item.done::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--route-green);margin-right:7px;flex-shrink:0}
+  .block-nav-item:not(.done)::before{content:"";width:5px;height:5px;border-radius:50%;background:#4A4C4E;margin-right:7px;flex-shrink:0}
+
+  .submit-side{
+    margin-top:28px;
+    padding-top:18px;
+    border-top:1px solid #35383A;
+  }
+  .save-status{font-size:11px;color:var(--ink-dim);margin-top:10px}
+
+  .exam-main{
+    padding:44px 56px;
+    max-width:760px;
+  }
+  .block-eyebrow{font-size:12px;color:var(--line-yellow);margin-bottom:6px}
+  .block-title{font-size:28px;font-style:italic;color:var(--paper);margin-bottom:6px}
+  .block-note{color:var(--ink-dim);font-size:13px;margin-bottom:36px;max-width:60ch}
+
+  .question{margin-bottom:36px}
+  .q-label{font-size:11px;color:var(--paper-dim);margin-bottom:8px;display:flex;justify-content:space-between}
+  .q-text{font-size:16px;color:var(--ink);margin-bottom:12px;line-height:1.65}
+  .q-text code{background:#2C2F31;padding:1px 5px;border-radius:2px;font-size:14px}
+  pre.code-block{
+    background:#141516;
+    border:1px solid #35383A;
+    border-radius:var(--radius);
+    padding:16px 18px;
+    overflow-x:auto;
+    font-size:13px;
+    line-height:1.55;
+    color:#C9E6D6;
+    margin-bottom:14px;
+    font-family:'SF Mono',Consolas,monospace;
+  }
+  textarea.answer{
+    width:100%;
+    background:var(--asphalt-2);
+    border:1px solid #35383A;
+    border-radius:var(--radius);
+    padding:14px 16px;
+    color:var(--ink);
+    font-size:14px;
+    line-height:1.6;
+    resize:vertical;
+    min-height:110px;
+  }
+  textarea.answer:focus{outline:none;border-color:var(--paper-dim)}
+  textarea.answer::placeholder{color:#5B5D5F}
+
+  .nav-buttons{
+    display:flex;
+    justify-content:space-between;
+    margin-top:44px;
+    padding-top:24px;
+    border-top:1px solid #35383A;
+  }
+  .btn-ghost{
+    color:var(--paper-dim);
+    font-size:13px;
+    padding:10px 4px;
+  }
+  .btn-ghost:hover{color:var(--paper)}
+  .btn-ghost:disabled{color:#4A4C4E;cursor:not-allowed}
+  .btn-next{
+    background:var(--paper);
+    color:var(--asphalt);
+    padding:11px 22px;
+    border-radius:var(--radius);
+    font-size:13px;
+    font-weight:600;
+  }
+  .btn-next:hover{opacity:.9}
+
+  /* ---------- DONE ---------- */
+  #screen-done{display:none;min-height:100vh;align-items:center;justify-content:center;padding:24px}
+  .done-card{max-width:420px;text-align:center}
+  .done-card .route-dash{margin:0 auto 24px}
+  .done-card h2{font-size:30px;font-style:italic;color:var(--paper);margin-bottom:12px}
+  .done-card p{color:var(--ink-dim);font-size:14px;margin-bottom:24px}
+  .done-detail{
+    background:var(--asphalt-2);
+    border:1px solid #35383A;
+    border-radius:var(--radius);
+    padding:16px 18px;
+    font-size:12px;
+    color:var(--ink-dim);
+    text-align:left;
+  }
+
+  @media (max-width:760px){
+    .exam-layout{grid-template-columns:1fr}
+    .sidebar{position:relative;height:auto;display:flex;flex-direction:column}
+    .exam-main{padding:28px 20px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ WELCOME ============ -->
+<div id="screen-welcome">
+  <div class="welcome-card">
+    <div class="route-mark"><div class="route-dash"></div><span>SATRACK · INGENIERÍA</span></div>
+    <h1>Evaluación de refuerzo</h1>
+    <p class="lede">Segunda ronda, dirigida a los gaps específicos detectados en la evaluación de mayo. Selecciona tu nombre para ver tu prueba.</p>
+
+    <div class="meta-row">
+      <span><b>45 min</b> duración</span>
+      <span><b>6 bloques</b> por prueba</span>
+      <span><b>Justificación</b> requerida</span>
+    </div>
+
+    <div class="candidate-list" id="candidate-list"></div>
+
+    <button class="btn-primary" id="btn-start" disabled onclick="startExam()">Comenzar evaluación →</button>
+  </div>
+</div>
+
+<!-- ============ EXAM ============ -->
+<div id="screen-exam">
+  <div class="exam-layout">
+    <div class="sidebar">
+      <div class="sidebar-name" id="sidebar-name">—</div>
+      <div class="sidebar-role">Prueba de refuerzo · Semi-Senior → Senior</div>
+      <div class="timer" id="timer">45:00</div>
+      <div class="block-nav" id="block-nav"></div>
+      <div class="submit-side">
+        <button class="btn-next" style="width:100%" onclick="finishExam()">Finalizar y enviar</button>
+        <div class="save-status" id="save-status">Guardado automático activo</div>
+      </div>
+    </div>
+    <div class="exam-main" id="exam-main"></div>
+  </div>
+</div>
+
+<!-- ============ DONE ============ -->
+<div id="screen-done">
+  <div class="done-card">
+    <div class="route-dash"></div>
+    <h2>Evaluación enviada</h2>
+    <p>Tus respuestas quedaron guardadas. Andrea las revisará y te dará retroalimentación directamente.</p>
+    <div class="done-detail" id="done-detail"></div>
+  </div>
+</div>
+
+<script>
+// ======================= DATA =======================
+const EXAMS = {
+  Daniel: {
+    date: "26 mayo 2026 → refuerzo",
+    prevScore: "67/100 en la primera evaluación",
+    blocks: [
+      {
+        id: "b1", title: "Memory management en Angular", pts: 15,
+        note: "Gap detectado: no identificó el memory leak por suscripción sin cancelar.",
+        questions: [
+          { id:"1.1", pts:8, code:`@Component({...})
+export class VehicleTrackerComponent implements OnInit {
+  vehicles: Vehicle[] = [];
+  constructor(private vehicleService: VehicleService) {}
+
+  ngOnInit() {
+    this.vehicleService.getVehicleUpdates().subscribe(data => {
+      this.vehicles = data;
+    });
+  }
+}`,
+            text:"Este componente se monta y desmonta constantemente (panel lateral que el usuario abre y cierra). Explica: <b>a)</b> qué problema concreto genera este código a lo largo de una sesión prolongada, <b>b)</b> por qué ocurre a nivel del ciclo de vida de Angular, y <b>c)</b> propón dos soluciones distintas, explicando en qué escenario usarías cada una." },
+          { id:"1.2", pts:7, text:"¿Cómo detectarías este problema en producción si no lo hubieras visto en el code review? Describe qué señales buscarías (herramientas, métricas o síntomas de usuario) y en qué momento del ciclo de desarrollo debería atraparse antes de llegar ahí." }
+        ]
+      },
+      {
+        id: "b2", title: "Arquitectura para alta concurrencia", pts: 20,
+        note: "Gap detectado: no propuso mensajería asíncrona para cargas altas.",
+        questions: [
+          { id:"2.1", pts:12, text:"Satrack necesita procesar telemetría de 800 vehículos que envían su posición cada 3 segundos. La solución más simple sería un endpoint HTTP que cada vehículo llama directamente, escribiendo en SQL Server. Explica: <b>a)</b> por qué esa solución síncrona empieza a fallar a ese volumen — sé específico sobre qué componente se satura primero y por qué, <b>b)</b> qué mecanismo introducirías para resolverlo, y <b>c)</b> qué trade-off aceptas al introducirlo." },
+          { id:"2.2", pts:8, text:"Ya definiste el mecanismo de mensajería. Justifica: ¿en qué casos SÍ seguirías usando HTTP síncrono dentro de la misma arquitectura, y en cuáles usarías el canal asíncrono? Da un ejemplo concreto de cada uno dentro del dominio de fleet tracking." }
+        ]
+      },
+      {
+        id: "b3", title: "SOLID y Clean Architecture", pts: 15,
+        note: "Gap detectado: confundió SRP con OCP y la dirección de dependencias.",
+        questions: [
+          { id:"3.1", pts:8, code:`public class VehicleAlertService
+{
+    public void ProcessAlert(Vehicle vehicle)
+    {
+        if (vehicle.Speed > vehicle.MaxAllowedSpeed) { ... }
+        _emailClient.Send(...);
+        _dbContext.SaveChanges();
+        _pdfGenerator.Generate(...);
+    }
+}`,
+            text:"¿Qué principio SOLID se viola exactamente? No basta con nombrarlo: explica por qué este código específicamente lo viola (qué 'razones de cambio' distintas conviven aquí) y cómo lo refactorizarías en términos de responsabilidades separadas." },
+          { id:"3.2", pts:7, text:"En Clean Architecture, ¿por qué la capa de Infraestructura nunca debería ser una dependencia de la que dependan Domain o Application? Explica qué se rompe en el sistema si esa dirección se invierte, con un ejemplo concreto." }
+        ]
+      },
+      {
+        id: "b4", title: "CI/CD conceptual", pts: 10,
+        note: "Gap detectado: confundió Continuous Delivery con Continuous Deployment.",
+        questions: [
+          { id:"4.1", pts:10, text:"Un compañero dice: 'Continuous Delivery y Continuous Deployment son básicamente lo mismo, ambos automatizan el pipeline hasta producción.' Explica por qué esa afirmación es incorrecta, señalando el punto exacto donde ambos procesos divergen, y da un ejemplo de un equipo donde tendría sentido usar Delivery en vez de Deployment." }
+        ]
+      },
+      {
+        id: "b5", title: "Comunicación en incidentes", pts: 10,
+        note: "Gap detectado: no incluyó al cliente ni a soporte en el flujo de respuesta.",
+        questions: [
+          { id:"5.1", pts:10, text:"Se detecta un bug crítico en producción que afecta el cálculo de horas de conducción de un cliente grande. Ya identificaste la causa y tienes el fix listo para desplegar en 20 minutos. Describe el flujo completo de comunicación que activarías — a quién le hablas, en qué orden, y qué le dices a cada uno — incluyendo explícitamente el rol del cliente afectado y de soporte." }
+        ]
+      },
+      {
+        id: "b6", title: "IA en el trabajo diario", pts: 10,
+        note: "",
+        questions: [
+          { id:"6.1", pts:4, text:"Describe una tarea reciente en la que usaste IA (Copilot, ChatGPT, Claude, etc.) como parte de tu flujo de desarrollo. ¿Qué le pediste exactamente y qué tuviste que corregir o ajustar del resultado?" },
+          { id:"6.2", pts:3, text:"¿En qué tipo de tarea evitarías deliberadamente usar IA generativa dentro del código de Satrack, y por qué?" },
+          { id:"6.3", pts:3, text:"Si tuvieras que revisar un PR donde sospechas que el código fue generado casi en su totalidad por IA, ¿qué revisarías con más cuidado que en un PR normal?" }
+        ]
+      }
+    ]
+  },
+  Jeimar: {
+    date: "28 mayo 2026 → refuerzo",
+    prevScore: "76/100 en la primera evaluación, el más alto de su cohorte",
+    blocks: [
+      {
+        id: "b1", title: "Memory management y OnPush en Angular", pts: 15,
+        note: "Gap detectado: no identificó el memory leak; confundió OnPush con detección directa del DOM.",
+        questions: [
+          { id:"1.1", pts:7, text:"El mismo componente que se te mostró en la evaluación anterior seguía teniendo una suscripción sin cancelar. Explica: <b>a)</b> qué pasa exactamente en memoria cada vez que el componente se destruye sin haber hecho unsubscribe, y <b>b)</b> por qué este problema es más grave en un dashboard como el de Satrack (que el usuario abre y cierra muchas veces en una sesión) que en una página que se carga una sola vez." },
+          { id:"1.2", pts:8, text:"En tu evaluación anterior confundiste OnPush con detección directa del DOM. Explica con tus palabras: <b>a)</b> qué condición debe cumplir un @Input() para que Angular detecte su cambio bajo OnPush (piensa en mutabilidad vs. inmutabilidad), <b>b)</b> qué pasaría si mutas un array con .push() en vez de crear uno nuevo con spread operator, y <b>c)</b> en qué componente de Satrack usarías OnPush con confianza y por qué ahí sí aplica bien." }
+        ]
+      },
+      {
+        id: "b2", title: "Entity Framework y el patrón N+1", pts: 12,
+        note: "Gap detectado: tu solución con IN seguía ejecutando dos consultas separadas.",
+        questions: [
+          { id:"2.1", pts:12, code:`foreach (var vehicle in vehicles)
+{
+    var alerts = await _context.Alerts
+        .Where(a => a.VehicleId == vehicle.Id)
+        .ToListAsync();
+    // ...
+}`,
+            text:"En tu code review anterior propusiste resolver el N+1 con un IN en SQL, pero esa solución todavía ejecuta dos consultas separadas. Explica: <b>a)</b> por qué una solución con IN en una consulta separada sigue siendo subóptima frente a .Include() o una proyección con JOIN, <b>b)</b> qué pasa con la performance a medida que crece la lista de vehículos en cada enfoque, y <b>c)</b> reescribe la solución óptima en pseudocódigo o C#." }
+        ]
+      },
+      {
+        id: "b3", title: "CI/CD conceptual", pts: 10,
+        note: "Gap detectado: identificaste que Delivery y Deployment se diferencian, pero elegiste la opción incorrecta.",
+        questions: [
+          { id:"3.1", pts:10, text:"Explica el criterio real que diferencia Continuous Delivery de Continuous Deployment (no lo que involucra cada uno, sino el punto exacto de divergencia) y da un ejemplo de un pipeline de Satrack donde usarías Delivery en vez de Deployment automático — justifica por qué ahí conviene el paso manual." }
+        ]
+      },
+      {
+        id: "b4", title: "Comunicación de feedback técnico", pts: 12,
+        note: "Gap detectado: tu feedback a un Junior fue correcto pero muy directo, sin reconocer primero lo que sí funcionó.",
+        questions: [
+          { id:"4.1", pts:12, text:"Un Junior entregó un PR funcional, pero con lógica de negocio duplicada en tres componentes distintos en vez de un servicio compartido. Escribe <b>el mensaje real</b> que le darías (como texto de Slack o comentario de PR), no una descripción de tu estrategia. Debe: reconocer algo concreto que sí funcionó, señalar el problema con claridad, y dejarle una pregunta o siguiente paso — no una orden." }
+        ]
+      },
+      {
+        id: "b5", title: "Documentación de decisiones técnicas", pts: 11,
+        note: "Gap detectado: tomaste una decisión técnica válida pero sin documentar las alternativas evaluadas.",
+        questions: [
+          { id:"5.1", pts:11, text:"En tu evaluación anterior tomaste una decisión técnica válida (refactor en el módulo de conducción) pero sin documentar las alternativas evaluadas. Escribe un ADR (Architecture Decision Record) breve para esa misma decisión: <b>Contexto</b> (qué problema había), <b>Alternativas consideradas</b> (al menos 2, incluyendo la que descartaste y por qué), <b>Decisión tomada</b>, <b>Consecuencias</b> (qué ganas y qué sacrificas)." }
+        ]
+      },
+      {
+        id: "b6", title: "IA en el trabajo diario", pts: 10,
+        note: "",
+        questions: [
+          { id:"6.1", pts:4, text:"Describe una tarea reciente en la que usaste IA (Copilot, ChatGPT, Claude, etc.) dentro de tu flujo de trabajo en Satrack. ¿Qué le pediste y qué tuviste que corregir del resultado?" },
+          { id:"6.2", pts:3, text:"Dado tu perfil arquitectónico fuerte: ¿usarías IA para proponer una primera versión de un diseño de arquitectura (como el de Kafka que propusiste)? ¿Por qué sí o por qué no, y qué validarías siempre a mano?" },
+          { id:"6.3", pts:3, text:"Si tuvieras que enseñarle a un Junior a usar IA generativa de forma responsable en su código, ¿cuál sería la primera regla que le darías?" }
+        ]
+      }
+    ]
+  }
+};
+
+// ======================= STATE =======================
+let currentCandidate = null;
+let currentBlockIndex = 0;
+let answers = {};
+let timeLeft = 45*60;
+let timerInterval = null;
+let saveTimeout = null;
+
+// ======================= WELCOME =======================
+function renderCandidateList(){
+  const list = document.getElementById('candidate-list');
+  list.innerHTML = '';
+  Object.keys(EXAMS).forEach(name => {
+    const row = document.createElement('button');
+    row.className = 'candidate-row';
+    row.id = 'cand-' + name;
+    row.onclick = () => selectCandidate(name);
+    row.innerHTML = `<div><div class="cname">${name}</div><div class="cmeta">Desarrollador Semi-Senior</div></div><div class="cscore">${EXAMS[name].prevScore}</div>`;
+    list.appendChild(row);
+  });
+}
+function selectCandidate(name){
+  currentCandidate = name;
+  document.querySelectorAll('.candidate-row').forEach(r => r.classList.remove('selected'));
+  document.getElementById('cand-' + name).classList.add('selected');
+  document.getElementById('btn-start').disabled = false;
+}
+
+async function startExam(){
+  if(!currentCandidate) return;
+  answers = {};
+  currentBlockIndex = 0;
+  timeLeft = 45*60;
+
+  // try to resume a draft
+  try{
+    const draft = await window.storage.get('refuerzo-draft:' + currentCandidate, true);
+    if(draft && draft.value){
+      const parsed = JSON.parse(draft.value);
+      answers = parsed.answers || {};
+    }
+  }catch(e){ /* no draft yet */ }
+
+  document.getElementById('screen-welcome').style.display = 'none';
+  document.getElementById('screen-exam').style.display = 'block';
+  document.getElementById('sidebar-name').textContent = currentCandidate;
+  renderBlockNav();
+  renderBlock(0);
+  startTimer();
+}
+
+// ======================= TIMER =======================
+function startTimer(){
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateTimerDisplay();
+    if(timeLeft <= 0){
+      clearInterval(timerInterval);
+      finishExam();
+    }
+  }, 1000);
+}
+function updateTimerDisplay(){
+  const m = Math.floor(timeLeft/60);
+  const s = timeLeft%60;
+  const el = document.getElementById('timer');
+  el.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  el.classList.toggle('low', timeLeft < 300);
+}
+
+// ======================= RENDER =======================
+function renderBlockNav(){
+  const nav = document.getElementById('block-nav');
+  const exam = EXAMS[currentCandidate];
+  nav.innerHTML = '';
+  exam.blocks.forEach((block, i) => {
+    const item = document.createElement('button');
+    const done = isBlockDone(block);
+    item.className = 'block-nav-item' + (i === currentBlockIndex ? ' active' : '') + (done ? ' done' : '');
+    item.onclick = () => { saveCurrentBlockDraft(); currentBlockIndex = i; renderBlock(i); renderBlockNav(); };
+    item.innerHTML = `<span>${block.title}</span><span class="pts">${block.pts}p</span>`;
+    nav.appendChild(item);
+  });
+}
+function isBlockDone(block){
+  return block.questions.every(q => answers[block.id + ':' + q.id] && answers[block.id + ':' + q.id].trim().length > 0);
+}
+
+function renderBlock(i){
+  const exam = EXAMS[currentCandidate];
+  const block = exam.blocks[i];
+  const main = document.getElementById('exam-main');
+  main.innerHTML = '';
+
+  const eyebrow = document.createElement('div');
+  eyebrow.className = 'block-eyebrow';
+  eyebrow.textContent = `Bloque ${i+1} de ${exam.blocks.length}`;
+  main.appendChild(eyebrow);
+
+  const title = document.createElement('div');
+  title.className = 'block-title';
+  title.textContent = block.title;
+  main.appendChild(title);
+
+  if(block.note){
+    const note = document.createElement('div');
+    note.className = 'block-note';
+    note.textContent = block.note;
+    main.appendChild(note);
+  } else {
+    const spacer = document.createElement('div');
+    spacer.style.marginBottom = '36px';
+    main.appendChild(spacer);
+  }
+
+  block.questions.forEach(q => {
+    const qDiv = document.createElement('div');
+    qDiv.className = 'question';
+
+    const label = document.createElement('div');
+    label.className = 'q-label';
+    label.innerHTML = `<span>Pregunta ${q.id}</span><span>${q.pts} pts</span>`;
+    qDiv.appendChild(label);
+
+    if(q.code){
+      const pre = document.createElement('pre');
+      pre.className = 'code-block';
+      pre.textContent = q.code;
+      qDiv.appendChild(pre);
+    }
+
+    const text = document.createElement('div');
+    text.className = 'q-text';
+    text.innerHTML = q.text;
+    qDiv.appendChild(text);
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'answer';
+    textarea.placeholder = 'Escribe tu respuesta aquí...';
+    const key = block.id + ':' + q.id;
+    textarea.value = answers[key] || '';
+    textarea.oninput = () => { answers[key] = textarea.value; scheduleDraftSave(); };
+    qDiv.appendChild(textarea);
+
+    main.appendChild(qDiv);
+  });
+
+  const navBtns = document.createElement('div');
+  navBtns.className = 'nav-buttons';
+  const prevBtn = document.createElement('button');
+  prevBtn.className = 'btn-ghost';
+  prevBtn.textContent = '← Bloque anterior';
+  prevBtn.disabled = i === 0;
+  prevBtn.onclick = () => { saveCurrentBlockDraft(); currentBlockIndex--; renderBlock(currentBlockIndex); renderBlockNav(); window.scrollTo(0,0); };
+  navBtns.appendChild(prevBtn);
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'btn-next';
+  nextBtn.textContent = i === exam.blocks.length - 1 ? 'Finalizar y enviar' : 'Siguiente bloque →';
+  nextBtn.onclick = () => {
+    saveCurrentBlockDraft();
+    if(i === exam.blocks.length - 1){ finishExam(); }
+    else{ currentBlockIndex++; renderBlock(currentBlockIndex); renderBlockNav(); window.scrollTo(0,0); }
+  };
+  navBtns.appendChild(nextBtn);
+
+  main.appendChild(navBtns);
+}
+
+function saveCurrentBlockDraft(){
+  scheduleDraftSave(true);
+}
+
+// ======================= PERSISTENCE =======================
+function scheduleDraftSave(immediate){
+  const statusEl = document.getElementById('save-status');
+  if(saveTimeout) clearTimeout(saveTimeout);
+  const doSave = async () => {
+    try{
+      statusEl.textContent = 'Guardando...';
+      await window.storage.set('refuerzo-draft:' + currentCandidate, JSON.stringify({
+        candidate: currentCandidate, answers, timeLeft, savedAt: new Date().toISOString()
+      }), true);
+      statusEl.textContent = 'Guardado ' + new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'});
+    }catch(e){
+      statusEl.textContent = 'No se pudo guardar — revisa tu conexión';
+    }
+  };
+  if(immediate){ doSave(); } else { saveTimeout = setTimeout(doSave, 1200); }
+}
+
+async function finishExam(){
+  clearInterval(timerInterval);
+  const exam = EXAMS[currentCandidate];
+  const answeredCount = Object.values(answers).filter(v => v && v.trim().length > 0).length;
+  const totalQuestions = exam.blocks.reduce((sum,b) => sum + b.questions.length, 0);
+
+  const submission = {
+    candidate: currentCandidate,
+    answers,
+    submittedAt: new Date().toISOString(),
+    timeUsedSeconds: (45*60) - timeLeft,
+    answeredCount,
+    totalQuestions
+  };
+
+  try{
+    await window.storage.set('refuerzo-final:' + currentCandidate, JSON.stringify(submission), true);
+  }catch(e){
+    document.getElementById('done-detail').textContent = 'Hubo un problema guardando la evaluación. Toma captura de esta pantalla y avísale a Andrea.';
+  }
+
+  document.getElementById('screen-exam').style.display = 'none';
+  document.getElementById('screen-done').style.display = 'flex';
+  const m = Math.floor(submission.timeUsedSeconds/60);
+  const s = submission.timeUsedSeconds%60;
+  document.getElementById('done-detail').innerHTML =
+    `<b>${currentCandidate}</b><br>${answeredCount} de ${totalQuestions} preguntas respondidas<br>Tiempo usado: ${m}:${s.toString().padStart(2,'0')}`;
+}
+
+// ======================= INIT =======================
+renderCandidateList();
+</script>
+</body>
+</html>
